@@ -9,12 +9,12 @@
 <body>
     <form method="post">
         <label for="name">Name:</label>
-        <input type="text" name="name"/><br/>
+        <input type="text" name="name" required/><br/>
         <label for="surname">Surname:</label>
-        <input type="text" name="surname"/><br/>
+        <input type="text" name="surname" required/><br/>
         <label for="wishes">Wishes:</label><br/>
         <ul>
-            <li><input type="text" name="wishes"/><br/></li>
+            <li><input type="text" name="wishes" required/><br/></li>
             <li><input type="text" name="wishes"/><br/></li>
             <li><input type="text" name="wishes"/><br/></li>
             <li><input type="text" name="wishes"/><br/></li>
@@ -25,8 +25,10 @@
             <li><input type="text" name="wishes"/><br/></li>
             <li><input type="text" name="wishes"/><br/></li>
         </ul>
-        <input type="submit" value="Submit"/>
+        <input type="submit" value="Submit" {{disabled}}/>
     </form>
+    {{message}}
+    <br/>
     <a href="/">To the main page</a>
 </body>
 </html>

@@ -8,10 +8,11 @@
 </head>
 <body>
     <h1>Fullfil someone's dream.</h1>
+    <a href="/shuffle" style="display: {{message}};">Shuffle players</a>
     <form method="post" action="/">
         <label for="santaId">Enter your id:</label>
         <input type="text" name="santaId"/>
-        <input type="submit" value="Submit">
+        <input type="submit" value="Submit" {{disabled}}>
     </form>
     <a href="/register">Haven't registered yet?</a>
 </body>
