@@ -3,7 +3,8 @@ const sequelize = require('./database')
 const User = require('./models/User')
 const Wish = require('./models/Wish')
 const Pair = require('./models/Pair')
-const async = require('hbs/lib/async')
+const { body, validationResult } = require('express-validator')
+const { redirect } = require('express/lib/response')
 
 sequelize.sync({ force: true }).then(res => console.log).catch(err => console.log)
 
@@ -24,10 +25,21 @@ app.get('/', async (req, res) => {
     }
 })
 
-app.post('/', (req, res) => {
-    console.log(req.body)
-    const userId = req.body.santaId
-    res.redirect(`/santa/${userId}`)
+app.post('/',
+    body('santaId').not().isEmpty().trim().custom(value => {
+        if (!/^[0-9]+$/.test(value)) {
+            throw new Error('Invalid characters')
+        }
+        return true
+    }),
+    (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.redirect('/')
+        }
+
+        const userId = req.body.santaId
+        res.redirect(`/santa/${userId}`)
 })
 
 
@@ -39,26 +51,44 @@ app.get('/register', async (req, res) => {
     })
 })
 
-app.post('/register', (req, res) => {
-    console.log(req.body)
-    const { name, surname, wishes } = req.body
-    const filteredWishes = wishes.filter(el => !!el)
-    User.create({
-        name,
-        surname
-    }).then(result => {
-        const userId = result.dataValues.id
-        filteredWishes.forEach(wish => {
-            Wish.create({
-                content: wish,
-                userId
+app.post('/register', 
+    body('name').not().isEmpty().trim().custom(value => {
+        if (!/^[a-zA-Z]+$/.test(value)) {
+            throw new Error('Invalid characters')
+        }
+        return true
+    }),
+    body('surname').not().isEmpty().trim().custom(value => {
+        if (!/^[a-zA-Z]+$/.test(value)) {
+            throw new Error('Invalid characters')
+        }
+        return true
+    }),
+    (req, res) => {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.render('register.hbs', {
+                message: 'All the fields should be filled in with latin letters'
             })
-            .catch(err => console.log)   
+        }
+        
+        const { name, surname, wishes } = req.body
+        const filteredWishes = wishes.filter(el => !!el)
+        User.create({
+            name,
+            surname
+        }).then(result => {
+            const userId = result.dataValues.id
+            filteredWishes.forEach(wish => {
+                Wish.create({
+                    content: wish,
+                    userId
+                })
+                .catch(err => console.log)   
+            })
+            res.redirect(`/${userId}`)
         })
-        res.redirect(`/${userId}`)
-    })
-    .catch(err => console.log)
-    
+        .catch(err => console.log)
 })
 
 app.get('/santa/:id', async (req, res) => {
