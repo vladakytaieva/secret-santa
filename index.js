@@ -45,9 +45,10 @@ app.post('/',
 
 app.get('/register', async (req, res) => {
     const users = await User.findAll({raw:true})
+    const pairs = await Pair.findAll({raw:true})
     res.render('register.hbs', {
         message: users.length === 500 ? 'Reached maximum number of users' : '',
-        disabled: users.length === 500 && 'disabled'
+        disabled: (users.length === 500 || pairs.length > 0) && 'disabled'
     })
 })
 
@@ -64,7 +65,7 @@ app.post('/register',
         }
         return true
     }),
-    (req, res) => {
+    async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
             return res.render('register.hbs', {
@@ -72,23 +73,28 @@ app.post('/register',
             })
         }
         
+        const pairs = await Pair.findAll({raw:true})
         const { name, surname, wishes } = req.body
         const filteredWishes = wishes.filter(el => !!el)
-        User.create({
-            name,
-            surname
-        }).then(result => {
-            const userId = result.dataValues.id
-            filteredWishes.forEach(wish => {
-                Wish.create({
-                    content: wish,
-                    userId
+        if (pairs.length === 0) {
+            User.create({
+                name,
+                surname
+            }).then(result => {
+                const userId = result.dataValues.id
+                filteredWishes.forEach(wish => {
+                    Wish.create({
+                        content: wish,
+                        userId
+                    })
+                    .catch(err => console.log)   
                 })
-                .catch(err => console.log)   
+                res.redirect(`/${userId}`)
             })
-            res.redirect(`/${userId}`)
-        })
-        .catch(err => console.log)
+            .catch(err => console.log)
+        } else {
+            res.json('users are already shuffled, adding new participants is not available')
+        }
 })
 
 app.get('/santa/:id', async (req, res) => {
@@ -128,10 +134,11 @@ app.get('/santa/:id', async (req, res) => {
 app.get('/shuffle', async (req, res) => {
     try {
         const users = await User.findAll({raw:true})
+        const pairs = await Pair.findAll({raw:true})
         res.render('shuffle.hbs', {
             numOfUsers: users.length,
             message: users.length >= 3 ? 'Shuffle now or wait for more users' : 'Waiting for more players...',
-            disabled: users.length >= 3 ? '' : 'disabled'
+            disabled: (users.length >= 3 && pairs.length === 0) ? '' : 'disabled'
         })
     } catch(err) {
         res.redirect('/')
@@ -145,24 +152,29 @@ app.post('/shuffle', async (req, res) => {
           [array[i], array[j]] = [array[j], array[i]];
         }
     }
-    try {
-        const users = await User.findAll({
-            attributes: ['id'],
-            raw: true
-        })
-        shuffle(users)
-        const medianIdx = Math.floor(users.length / 2)
-        const wishers = [...users.slice(medianIdx), ...users.slice(0, medianIdx)]
-        for (let i = 0; i < users.length; i++) {
-            Pair.create({
-                santaId: users[i].id,
-                wisherId: wishers[i].id
+    const pairs = await Pair.findAll({raw:true})
+    if (pairs.length === 0) {
+        try {
+            const users = await User.findAll({
+                attributes: ['id'],
+                raw: true
             })
-            .catch(err => console.log)
+            shuffle(users)
+            const medianIdx = Math.floor(users.length / 2)
+            const wishers = [...users.slice(medianIdx), ...users.slice(0, medianIdx)]
+            for (let i = 0; i < users.length; i++) {
+                Pair.create({
+                    santaId: users[i].id,
+                    wisherId: wishers[i].id
+                })
+                .catch(err => console.log)
+            }
+            res.redirect('/')
+        } catch(err) {
+            res.json('failed to shuffle players')
         }
-        res.redirect('/')
-    } catch(err) {
-        res.json('failed to shuffle players')
+    } else {
+        res.json('users are already shuffled')
     }
 })
 
